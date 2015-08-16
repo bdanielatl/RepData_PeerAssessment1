@@ -1,66 +1,53 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-author: "Ben Daniel"
-output: 
-  html_document:
-    keep_md: true
-    
----
-This study analyzes patterns in step data taken from a movement tracking device.
-## Loading and preprocessing the data
-The data as loaded and NAs were removed.
-
-```{r echo=FALSE} 
 library(dplyr)
 library(ggplot2)
-library(knitr)
 source("multiplot.R")
+par()              # view current settings
+opar <- par()      # make a copy of current settings
 activity.df <- read.csv("activity.csv",stringsAsFactors = FALSE)
-#filter complete cases using dplyr (remove the NAs)
 activity.df.cc <- activity.df %>% filter(complete.cases(.))
 activity.df.cc <- activity.df.cc %>% mutate(date=as.Date(date , "%Y-%m-%d"))
-```
 
-## What is mean total number of steps taken per day?
-To answer this question, roll up the data to the date level, and then summarise.
-```{r echo=TRUE}
 agg.df <- activity.df.cc %>% 
         group_by(date)%>%
-        arrange(date,interval)%>%
         summarize(sum_steps = sum(steps), 
                   mean_steps=mean(steps), 
-                  median_steps = median(steps)
-                  )
+                  median_steps = median(steps))
+#number of steps per day (each bar is bucket range on the number of steps,
+#the count are the number for days that bucket was taken )
 hist(agg.df$sum_steps, 
      ylab="number of steps per day", 
      xlab="bins of number of steps", 
      main ="Histogram of Number of Daily Steps Taken")
 
-#kable(agg.df,digits=2)
-
-```
-
-## What is the average daily activity pattern?  
-To answer this question, we started with the complete cases data set, and grouped by the interval column.  Next, the mean steps for each interval were caluclated and plotted.
-```{r echo=TRUE }
+#average daily pattern
 adp.df <- activity.df.cc %>% 
           group_by(interval) %>%
           summarise(mean_steps =mean(steps))
 
 qplot(interval,mean_steps,data=adp.df,geom="line")
-```
 
-## Imputing missing values
-Missing Values were assessed and substituted with the average value for the null interval.  While the pattern remains the same, it is clear that the number of steps is boosted by filling in the NAs with the average.
-```{r echo=TRUE}
-par(mfrow=c(1,2))
-#plot the total steps after
+
+#time when the maximum number of steps are taken
+adp.df %>% arrange(desc(mean_steps)) %>% head(n=1) %>% select (interval)        
+
+
+#count the number of rows that have NAs
+num_rows_na<-activity.df %>% filter(is.na(steps)) %>% count()
+
+#fill those rows with NAs with the average number of steps
+
 activity.df.fc <- merge(adp.df,activity.df, by="interval") %>% 
                 mutate(nsteps=ifelse(is.na(steps),mean_steps,steps))
 
+
+#rollup to the daily level
 activity.day <- activity.df.fc  %>% group_by(date) %>%
                                 summarize(total_n_steps=sum(nsteps))
 
+par(mfrow=c(1,2))
+
+
+#plot the total steps after
 hist(activity.day$total_n_steps , ylab="number of steps per day", 
      xlab="bins of number of steps", 
      main ="Daily Steps Taken \nwith NA's filled by Avg Day")
@@ -71,16 +58,29 @@ hist(agg.df$sum_steps,
      main ="Number of Daily \nSteps Taken")
 
 
-```
+total_daily_steps<-sum(activity.day$total_n_steps)
+mean_daily_steps<- mean(activity.day$total_n_steps)
 
-## Are there differences in activity patterns between weekdays and weekends?
-There is a clear observable pattern between weekends and weekdays
+# Do these values differ from the estimates from the first part of the assignment? 
+        #they do differ, the number of steps per day is boosted, 
+        #especially in the 10-15K bucket
+# What is the impact of imputing missing data on the estimates of the total 
+# daily number of steps?
 
-```{r echo=TRUE}
+########
 activity.df.cc.wd <- activity.df.cc %>% 
         mutate(isweekday=ifelse(!(weekdays(date,TRUE) %in% c("Sat","Sun")),1,0)) %>%
         group_by (interval,isweekday) %>%
         summarise(total_steps = sum(steps))
+
+# p1<- ggplot(data=activity.df.cc.wd%>%
+#                     filter(isweekday==1),interval, total_steps,geom="line")
+# 
+# p2<- ggplot(data=activity.df.cc.wd%>%
+#                     filter(isweekday==0),interval, total_steps,geom="line")
+# multiplot(p1,p2,cols=1,rows=2)
+
+
 p1<-ggplot(
         data=activity.df.cc.wd%>%filter(isweekday==1), 
         aes(x=interval,y=total_steps)) + geom_line()+ ylim(0,10000) +
@@ -92,4 +92,7 @@ p2<-ggplot(
         ggtitle("Total Steps Over a Day on Weekends")
 
 multiplot(p1,p2)
-```
+
+
+
+par(opar)          # restore original settings

@@ -10,20 +10,12 @@ This study analyzes patterns in step data taken from a movement tracking device.
 ## Loading and preprocessing the data
 The data as loaded and NAs were removed.
 
-```{r echo=FALSE} 
-library(dplyr)
-library(ggplot2)
-library(knitr)
-source("multiplot.R")
-activity.df <- read.csv("activity.csv",stringsAsFactors = FALSE)
-#filter complete cases using dplyr (remove the NAs)
-activity.df.cc <- activity.df %>% filter(complete.cases(.))
-activity.df.cc <- activity.df.cc %>% mutate(date=as.Date(date , "%Y-%m-%d"))
-```
+
 
 ## What is mean total number of steps taken per day?
 To answer this question, roll up the data to the date level, and then summarise.
-```{r echo=TRUE}
+
+```r
 agg.df <- activity.df.cc %>% 
         group_by(date)%>%
         arrange(date,interval)%>%
@@ -35,14 +27,18 @@ hist(agg.df$sum_steps,
      ylab="number of steps per day", 
      xlab="bins of number of steps", 
      main ="Histogram of Number of Daily Steps Taken")
+```
 
+![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-1.png) 
+
+```r
 #kable(agg.df,digits=2)
-
 ```
 
 ## What is the average daily activity pattern?  
 To answer this question, we started with the complete cases data set, and grouped by the interval column.  Next, the mean steps for each interval were caluclated and plotted.
-```{r echo=TRUE }
+
+```r
 adp.df <- activity.df.cc %>% 
           group_by(interval) %>%
           summarise(mean_steps =mean(steps))
@@ -50,9 +46,12 @@ adp.df <- activity.df.cc %>%
 qplot(interval,mean_steps,data=adp.df,geom="line")
 ```
 
+![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png) 
+
 ## Imputing missing values
 Missing Values were assessed and substituted with the average value for the null interval.  While the pattern remains the same, it is clear that the number of steps is boosted by filling in the NAs with the average.
-```{r echo=TRUE}
+
+```r
 par(mfrow=c(1,2))
 #plot the total steps after
 activity.df.fc <- merge(adp.df,activity.df, by="interval") %>% 
@@ -69,14 +68,15 @@ hist(agg.df$sum_steps,
      ylab="number of steps per day", 
      xlab="bins of number of steps", 
      main ="Number of Daily \nSteps Taken")
-
-
 ```
+
+![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png) 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 There is a clear observable pattern between weekends and weekdays
 
-```{r echo=TRUE}
+
+```r
 activity.df.cc.wd <- activity.df.cc %>% 
         mutate(isweekday=ifelse(!(weekdays(date,TRUE) %in% c("Sat","Sun")),1,0)) %>%
         group_by (interval,isweekday) %>%
@@ -93,3 +93,5 @@ p2<-ggplot(
 
 multiplot(p1,p2)
 ```
+
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png) 
